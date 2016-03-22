@@ -17,6 +17,9 @@
 	var root = this,
 		previous = root.Chart;
 
+    //Provide the global window variable
+    global.window || (global.window = global);
+
 	//Occupy the global variable of Chart, and create a simple base class
 	var Chart = function(context){
 		var chart = this;
@@ -33,7 +36,7 @@
 			}
 			else
 			{
-				return document.defaultView.getComputedStyle(element).getPropertyValue(dimension);
+				return element[dimension.toLowerCase()];
 			}
 		}
 
@@ -44,8 +47,6 @@
 		context.canvas.width  = width;
 		context.canvas.height = height;
 
-		var width = this.width = context.canvas.width;
-		var height = this.height = context.canvas.height;
 		this.aspectRatio = this.width / this.height;
 		//High pixel density displays - multiply the size of the canvas height/width by the device pixel ratio, then scale.
 		helpers.retinaScale(this);
@@ -56,7 +57,7 @@
 	Chart.defaults = {
 		global: {
 			// Boolean - Whether to animate the chart
-			animation: true,
+			animation: false,
 
 			// Number - Number of animation steps
 			animationSteps: 60,
@@ -778,8 +779,6 @@
 				height = chart.canvas.height;
 
 			if (window.devicePixelRatio) {
-				ctx.canvas.style.width = width + "px";
-				ctx.canvas.style.height = height + "px";
 				ctx.canvas.height = height * window.devicePixelRatio;
 				ctx.canvas.width = width * window.devicePixelRatio;
 				ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
