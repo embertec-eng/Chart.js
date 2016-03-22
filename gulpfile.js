@@ -26,7 +26,7 @@ gulp.task('build', function(){
 	// Default to all of the chart types, with Chart.Core first
 	var srcFiles = [FileName('Core')],
 		isCustom = !!(util.env.types),
-		outputDir = (isCustom) ? 'custom' : '.';
+		outputDir = '.';
 	if (isCustom){
 		util.env.types.split(',').forEach(function(type){ return srcFiles.push(FileName(type))});
 	}
