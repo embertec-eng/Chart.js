@@ -61,7 +61,6 @@
             // minimum of 10px font size for readability
             this.baseFontSize = Math.max(10, Math.round(tryFontSize * longestAllowed / longestLegend));
 
-            console.log('bFontSize', this.baseFontSize);
             var doughnutAreaHeight = this.chart.height - (1 + 2 * this.options.percentageLegendVerticalPadding/100) * this.baseFontSize * Math.ceil(data.length / 2);
             this.outerRadius = (helpers.min([this.chart.width, doughnutAreaHeight]) - this.options.segmentStrokeWidth/2)/2;
             this.center = {
