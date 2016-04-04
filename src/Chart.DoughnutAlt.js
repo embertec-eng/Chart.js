@@ -91,7 +91,7 @@
                     ctx.fill();
                     ctx.closePath();
                     // text
-                    ctx.beginPath()
+                    ctx.beginPath();
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'middle';
                     ctx.font = helpers.fontString(this.baseFontSize, 'normal', 'sans-serif');
