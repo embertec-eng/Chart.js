@@ -2644,9 +2644,6 @@
 
             data.reduce(function(lastEndAngle, datapoint, index) {
                 var segment = that.addData(datapoint, index, lastEndAngle);
-                if (index === data.length - 1) {
-                    segment.endAngle = Math.PI * 3.5;
-                }
                 that.segments.push(segment);
                 that.readouts.push(that.addReadout(datapoint, index, lastEndAngle));
                 that.legends.push(that.addLegend(datapoint, index));
@@ -3402,6 +3399,7 @@
         name: "PulseForecast",
         defaults : defaultConfig,
         initialize:  function(data){
+            var that = this;
             // We're only interested in the first three array elements
             var colors = {
                 todate: data.color,
@@ -3460,7 +3458,7 @@
                         inY = this.center.y - this.innerRadius * this.sinv,
                         hTickY = ((outX < this.center.x && this.direction === 'right') || (outX > this.center.x && this.direction === 'left')) ? Math.min(outY, this.arcTopY-2) : outY,
                         // slightly smaller font than the inner circle tick
-                        sizeFactor = 1.8,
+                        sizeFactor = 2,
                         // avoid touching tick end circle with texts
                         vPadding = Math.max(0.25 * this.baseFontSize, this.tickEndRadius),
                         hPadding = 0.5 * sizeFactor * this.baseFontSize,
@@ -3524,7 +3522,7 @@
                         inX = this.center.x - this.innerRadius * this.cosv,
                         inY = this.center.y - this.innerRadius * this.sinv,
                         vPadding = 0.25 * this.baseFontSize,
-                        valueLineFontSize = 2 * this.baseFontSize;
+                        valueLineFontSize = 2.2 * this.baseFontSize;
                     ctx.save();
                     // tick
                     ctx.beginPath();
@@ -3565,7 +3563,7 @@
 
             this.calculateTotal(data.values);
 
-            helpers.each(Object.keys(data.values).map(function(key) {
+            Object.keys(data.values).map(function(key) {
                 return {
                     value: data.values[key],
                     color: colors[key],
@@ -3575,11 +3573,21 @@
                 value: this.total,
                 color: colors.forecast,
                 label: 'bottomHalfCircle'
-            }),function(datapoint, index){
+            }).sort(function(a, b) {
+                return a.value - b.value;
+            }).reduce(function(lastValue, datapoint, index){
                 if (datapoint.label) {
-                    this.addData(datapoint, index, true);
+                    var segment = that.addData(datapoint, index, lastValue);
+                    if (datapoint.label === 'bottomHalfCircle') {
+                        segment.startAngle = 0;
+                        segment.endAngle = Math.PI;
+                    }
+                    that.segments.push(segment);
+                    return datapoint.value;
+                } else {
+                    return lastValue;
                 }
-            },this);
+            }, 0);
 
             this.roundedRectangles = [{
                 pct: this.options.percentageOuter,
@@ -3643,21 +3651,20 @@
 
             this.render();
         },
-        addData : function(segment, atIndex, silent){
-            var index = atIndex || this.segments.length;
-            this.segments.splice(index, 0, new this.SegmentArc({
-                value : segment.value,
+        addData : function(segment, atIndex, lastValue){
+            return new this.SegmentArc({
+                value : segment.value - lastValue,
                 outerRadius : this.outerRadius,
                 innerRadius : (this.outerRadius/100) * this.options.percentageInnerCutout,
                 fillColor : segment.color,
                 highlightColor : segment.highlight || segment.color,
                 showStroke : this.options.segmentShowStroke,
-                strokeWidth : this.options.segmentStrokeWidth,
-                strokeColor : this.options.segmentStrokeColor,
-                startAngle : Math.PI,
-                endAngle : Math.PI + (segment.value/this.total) * 2 * Math.PI,
+                strokeWidth : 0,
+                strokeColor : segment.color,
+                startAngle : Math.PI + this.calculateCircumference(lastValue),
+                endAngle : Math.PI + this.calculateCircumference(segment.value),
                 label : segment.label
-            }));
+            });
         },
         calculateTotal : function(values){
             this.total = helpers.max(Object.keys(values).map(function(key) {
@@ -3684,11 +3691,9 @@
             ctx.restore();
 
             // Forecast doughnut
-            helpers.each(this.segments.sort(function(a, b){
-                return b.value - a.value;
-            }),function(segment){
+            helpers.each(this.segments, function(segment){
                 segment.draw();
-            },this);
+            });
 
             // Tick and text
             helpers.each(this.ticks, function(tick) {
