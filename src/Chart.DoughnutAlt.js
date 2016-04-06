@@ -134,9 +134,6 @@
 
             data.reduce(function(lastEndAngle, datapoint, index) {
                 var segment = that.addData(datapoint, index, lastEndAngle);
-                if (index === data.length - 1) {
-                    segment.endAngle = Math.PI * 3.5;
-                }
                 that.segments.push(segment);
                 that.readouts.push(that.addReadout(datapoint, index, lastEndAngle));
                 that.legends.push(that.addLegend(datapoint, index));
