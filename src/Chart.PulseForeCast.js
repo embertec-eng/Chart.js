@@ -30,8 +30,14 @@
         //The percentage of the tick end circle radius against outer circle radius
         percentageTickEndCircleRadius : 5,
 
+        percentageDotRadius : 5,
+
+        percentageNotBad : 125,
+
+        colorGood : '#92d400',
+        colorNotBad : '#e89e0c',
+        colorBad : '#ff0000',
         colorBorder : '#000000',
-        colorBudget : '#cccccc',
         colorBelow : '#666666'
     };
 
@@ -41,11 +47,7 @@
         initialize:  function(data){
             var that = this;
             // We're only interested in the first three array elements
-            var colors = {
-                todate: data.color,
-                forecast: this.options.colorBelow,
-                budget: this.options.colorBudget
-            };
+            var haloColor =  (data.todate > data.budget * this.options.percentageNotBad/100) ? this.options.colorBad : (data.todate > data.budget ? this.options.colorNotBad : this.options.colorGood);
             var texts = {
                 todate: 'To date',
                 budget: 'Budget'
@@ -62,6 +64,49 @@
                 ctx : this.chart.ctx,
                 x : this.center.x,
                 y : this.center.y
+            });
+
+            this.DotArc = Chart.Arc.extend({
+                ctx : this.chart.ctx,
+                x : this.center.x,
+                y : this.center.y,
+                radius : this.outerRadius * (this.options.percentageInnerCutout + (100-this.options.percentageInnerCutout)/2)/100,
+                dotRadius : Math.max(2, this.outerRadius * this.options.percentageDotRadius/100),
+                draw : function() {
+                    var ctx = this.ctx;
+                    var endAngle = this.endAngle < this.startAngle ? this.endAngle + Math.PI * 2 : this.endAngle;
+                    var dotCircumference = 2 * Math.asin(this.dotRadius/this.radius);
+                    // dot space ratio is 1:1
+                    var step = 2 * dotCircumference;
+                    var currentAngle = this.startAngle + 0.5 * dotCircumference;
+                    ctx.save();
+                    function colorFinder(curr) {
+                        return function(color, thr) {
+                            if (thr.startAngle < curr && curr <= thr.endAngle) {
+                                color = thr.color;
+                            }
+                            return color;
+                        };
+                    }
+                    // draw at least one dot
+                    do {
+                        ctx.beginPath();
+                        ctx.strokeWidth = 0;
+                        ctx.fillStyle = this.fillColors.reduce(colorFinder(currentAngle), this.fillColors[0].color);
+                        ctx.arc(
+                            this.x + Math.cos(currentAngle) * this.radius,
+                            this.y + Math.sin(currentAngle) * this.radius,
+                            this.dotRadius,
+                            0,
+                            Math.PI * 2
+                        );
+                        ctx.fill();
+                        ctx.closePath();
+                        currentAngle += step;
+                        // enough room to draw one dot
+                    } while (currentAngle + 0.5 * dotCircumference <= endAngle);
+                    ctx.restore();
+                }
             });
 
             this.RoundedRectangle = Chart.Element.extend({
@@ -201,40 +246,57 @@
             });
 
 
-            this.calculateTotal(data.values);
+            this.calculateTotal(data);
 
-            Object.keys(data.values).map(function(key) {
-                return {
-                    value: data.values[key],
-                    color: colors[key],
-                    label: texts[key]
-                };
-            }).concat({
-                value: this.total,
-                color: colors.forecast,
-                label: 'bottomHalfCircle'
-            }).sort(function(a, b) {
-                return a.value - b.value;
-            }).reduce(function(lastValue, datapoint, index){
-                if (datapoint.label) {
-                    var segment = that.addData(datapoint, index, lastValue);
-                    if (datapoint.label === 'bottomHalfCircle') {
-                        segment.startAngle = 0;
-                        segment.endAngle = Math.PI;
-                    }
-                    that.segments.push(segment);
-                    return datapoint.value;
-                } else {
-                    return lastValue;
+            var thresholds = [{
+                threshold : 0
+            }, {
+                threshold : 1,
+                color : this.options.colorGood
+            }, {
+                threshold : this.options.percentageNotBad/100,
+                color : this.options.colorNotBad
+            }, {
+                threshold : this.total / data.budget,
+                color : this.options.colorBad
+            }];
+            this.greySeg = this.addData({
+                value : this.total,
+                color : this.options.colorBelow
+            }, 3, thresholds.slice(1).reduce(function(lastValue, thr, index) {
+                if (data.todate > data.budget * thresholds[index].threshold) {
+                    var newValue = Math.min(data.todate, data.budget * thr.threshold);
+                    that.segments.push(that.addData({
+                        value : newValue,
+                        color : thr.color
+                    }, index, lastValue));
+                    lastValue = newValue;
                 }
-            }, 0);
+                return lastValue;
+            }, 0));
+            this.greySeg.endAngle = Math.PI;
+
+            if (data.forecast > data.todate) {
+                this.dot = new this.DotArc({
+                    value : data.forecast,
+                    startAngle : Math.PI + this.calculateCircumference(data.todate),
+                    endAngle : Math.PI + this.calculateCircumference(data.forecast),
+                    fillColors : thresholds.slice(1).map(function(thr, index) {
+                        return {
+                            startAngle : Math.PI + that.calculateCircumference(data.budget * thresholds[index].threshold),
+                            endAngle : Math.PI + that.calculateCircumference(data.budget * thr.threshold),
+                            color : thr.color
+                        };
+                    })
+                });
+            }
 
             this.roundedRectangles = [{
                 pct: this.options.percentageOuter,
                 color: this.options.colorBorder
             },{
                 pct: this.options.percentageHaloOuter,
-                color: colors.todate
+                color: haloColor
             }, {
                 pct: this.options.percentagePulseInner,
                 color: this.options.colorBorder
@@ -252,7 +314,7 @@
 
             this.ticks = [];
             this.ticks.push(new this.InnerTick({
-                value: data.values.forecast,
+                value: data.forecast,
                 color : this.options.colorBelow,
                 baseFontSize : Math.floor(this.outerRadius/6),
                 strokeWidth : this.options.tickStrokeWidth,
@@ -260,20 +322,20 @@
                 innerRadius : this.outerRadius * (1 - this.options.percentageTickLength / 100),
                 center : this.center,
                 tickEndRadius : Math.max(this.options.percentageTickEndCircleRadius * this.outerRadius / 100, 1),
-                sinv : Math.sin((data.values.forecast/this.total) * 2 * Math.PI),
-                cosv : Math.cos((data.values.forecast/this.total) * 2 * Math.PI)
+                sinv : Math.sin((data.forecast/this.total) * 2 * Math.PI),
+                cosv : Math.cos((data.forecast/this.total) * 2 * Math.PI)
             }));
 
-            Object.keys(data.values).filter(function(key) {
+            Object.keys(data).filter(function(key) {
                 return ['todate', 'budget'].indexOf(key.toLowerCase()) >= 0;
             }).sort(function(a, b) {
-                return data.values[a] - data.values[b];
+                return data[a] - data[b];
             }).forEach(function(key, index) {
                 var directions = ['left', 'right'];
                 var pulseEdgeX = this.center.x + (index ? 1 : -1) * this.outerRadius * this.options.percentageOuter / 100;
                 this.ticks.push(new this.OuterTick({
                     direction : directions[index],
-                    value: data.values[key],
+                    value: data[key],
                     text: texts[key],
                     color : this.options.colorBelow,
                     baseFontSize : Math.floor(this.outerRadius/6),
@@ -282,8 +344,8 @@
                     innerRadius : this.outerRadius * this.options.percentageInnerCutout / 100,
                     center : this.center,
                     tickEndRadius : Math.max(this.options.percentageTickEndCircleRadius * this.outerRadius / 100, 1),
-                    sinv : Math.sin((data.values[key]/this.total) * 2 * Math.PI),
-                    cosv : Math.cos((data.values[key]/this.total) * 2 * Math.PI),
+                    sinv : Math.sin((data[key]/this.total) * 2 * Math.PI),
+                    cosv : Math.cos((data[key]/this.total) * 2 * Math.PI),
                     arcTopY : this.center.y - this.outerRadius,
                     pulseEdgeX : pulseEdgeX
                 }));
@@ -330,6 +392,8 @@
             ctx.closePath();
             ctx.restore();
 
+            this.greySeg.draw();
+
             // Forecast doughnut
             helpers.each(this.segments, function(segment){
                 segment.draw();
@@ -339,6 +403,9 @@
             helpers.each(this.ticks, function(tick) {
                 tick.draw();
             });
+
+            // Dots on the top to avoid tick stroke over dots
+            this.dot.draw();
         }
     });
 }).call(this);
