@@ -60,8 +60,9 @@
             var longestAllowed = (1 - 2 * this.options.percentageLegendHorizontalPadding/100) * this.chart.width/2;
             // minimum of 10px font size for readability
             this.baseFontSize = Math.max(10, Math.round(tryFontSize * longestAllowed / longestLegend));
-
-            var doughnutAreaHeight = this.chart.height - (1 + 2 * this.options.percentageLegendVerticalPadding/100) * this.baseFontSize * Math.ceil(data.length / 2);
+            this.legendLines = Math.ceil(data.length / 2);
+            this.legendLineHeight = (1 + 2 * this.options.percentageLegendVerticalPadding/100) * this.baseFontSize;
+            var doughnutAreaHeight = this.chart.height - this.legendLineHeight * this.legendLines;
             this.outerRadius = (helpers.min([this.chart.width, doughnutAreaHeight]) - this.options.segmentStrokeWidth/2)/2;
             this.center = {
                 x : this.chart.width/2,
@@ -159,11 +160,11 @@
         addLegend : function(datapoint, index) {
             var doughnutBottomY = this.baseFontSize + 2 * this.outerRadius;
             var circleRadius = 0.4 * this.baseFontSize;
-            var vPadding = this.baseFontSize * this.options.percentageLegendVerticalPadding/100;
+            var vPadding = (this.chart.height - doughnutBottomY - this.legendLineHeight * this.legendLines)/2;
             return new this.Legend({
                 baseFontSize : this.baseFontSize,
                 x : index % 2 ? (0.5*this.chart.width) : 0,
-                y : doughnutBottomY + Math.floor(index/2) * (this.baseFontSize + 2 * vPadding),
+                y : doughnutBottomY + Math.floor(index/2) * this.legendLineHeight,
                 circleRadius : circleRadius,
                 hPadding : 1.5 * circleRadius,
                 vPadding : vPadding,
