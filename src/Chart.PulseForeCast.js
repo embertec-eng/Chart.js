@@ -404,8 +404,10 @@
                 tick.draw();
             });
 
-            // Dots on the top to avoid tick stroke over dots
-            this.dot.draw();
+            if (this.dot) {
+                // Dots on the top to avoid tick stroke over dots
+                this.dot.draw();
+            }
         }
     });
 }).call(this);
