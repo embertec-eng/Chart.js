@@ -47,7 +47,7 @@
         initialize:  function(data){
             var that = this;
             // We're only interested in the first three array elements
-            var haloColor =  (data.todate > data.budget * this.options.percentageNotBad/100) ? this.options.colorBad : (data.todate > data.budget ? this.options.colorNotBad : this.options.colorGood);
+            var haloColor =  (data.forecast > data.budget * this.options.percentageNotBad/100) ? this.options.colorBad : (data.forecast > data.budget ? this.options.colorNotBad : this.options.colorGood);
             var texts = {
                 todate: 'To date',
                 budget: 'Budget'
