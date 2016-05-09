@@ -4126,6 +4126,11 @@
 
 
     var defaultConfig = {
+        //Boolean - Whether to show the day names under the bar
+        showDay : true,
+        //Number - Font size used to render the day names, only used when showDay is true
+        dayFontSize : 9,
+
         //Boolean - Whether the scale should start at zero, or an order of magnitude down from the lowest value
         scaleBeginAtZero : true,
 
@@ -4156,11 +4161,20 @@
             //Expose options as a scope variable here so we can access it in the ScaleClass
             var options = this.options;
 
+            var dayHeight = 0;
+            if (options.showDay) {
+                this.chart.ctx.save();
+                this.chart.ctx.font = helpers.fontString(options.dayFontSize, 'normal', 'sans-serif');
+                var tm = this.chart.ctx.measureText(data.labels.join(''));
+                dayHeight = tm.actualBoundingBoxAscent + tm.actualBoundingBoxDescent + 2;
+                this.chart.ctx.restore();
+            }
+
             this.ScaleClass = Chart.Scale.extend({
                 offsetGridLines : true,
                 calculateY : function(value) {
-                    var baseHeight = this.height - 2 * options.barDatasetSpacing;
-                    return this.height - options.barDatasetSpacing - baseHeight * value / (this.max - this.min);
+                    var baseHeight = this.height - 2 * options.barDatasetSpacing - dayHeight;
+                    return this.height - options.barDatasetSpacing - dayHeight - baseHeight * value / (this.max - this.min);
                 },
                 calculateBarWidth : function(datasetCount){
                     var baseWidth = this.width - (datasetCount+1) * options.barDatasetSpacing - datasetCount * (this.valuesCount-1) * options.barValueSpacing;
@@ -4211,7 +4225,7 @@
 
             this.buildScale(data.labels);
 
-            this.BarClass.prototype.base = this.scale.height + this.scale.padding;
+            this.BarClass.prototype.base = this.scale.height - dayHeight;
 
             this.eachBars(function(bar, index, datasetIndex){
                 helpers.extend(bar, {
@@ -4233,6 +4247,16 @@
                 helpers.each(dataset.bars,function(bar,index){
                     if (bar.hasValue()){
                         bar.draw();
+                    }
+                    if (this.options.showDay) {
+                        ctx.save();
+                        ctx.fillStyle = '#000000';
+                        ctx.strokeStyle = '#000000';
+                        ctx.font = helpers.fontString(this.options.dayFontSize, 'normal', 'sans-serif');
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'top';
+                        ctx.fillText(this.scale.xLabels[index % this.scale.xLabels.length], bar.x, bar.base-1);
+                        ctx.restore();
                     }
                 },this);
 
