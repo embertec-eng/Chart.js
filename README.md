@@ -2,6 +2,9 @@
 
 Fork of the original Chart.js repo with customized chart types
 
+## v1.0.2.8
+- add x labels to three weeks chart
+
 ## v1.0.2.7
 - fix the haloColor condition in PulseForecast chart
 
