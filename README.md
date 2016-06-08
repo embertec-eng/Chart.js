@@ -1,6 +1,8 @@
 # Chart.js
 
 Fork of the original Chart.js repo with customized chart types
+## v1.0.2.9
+- moved customized chart type out of this repo
 
 ## v1.0.2.8
 - add x labels to three weeks chart
